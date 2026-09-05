@@ -1,4 +1,4 @@
-# ☁️ TgCloud - Telegram to Google Drive & Local Storage Bot
+# ☁️ TgCloud - Telegram to GDrive & Local Storage Bot
 
 Bot interactivo de Telegram desarrollado en Python 3.12 para la descarga y almacenamiento acelerado de archivos pesados hacia Google Drive y/o almacenamiento local del servidor.
 
