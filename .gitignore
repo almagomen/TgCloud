@@ -13,9 +13,8 @@ wheels/
 !.env.example
 
 # Tokens de Google y sesiones de Telegram
-auth/
-*.session
-*.session-journal
+auth/*
+!auth/*.py
 
 # Logs y descargas temporales
 logs/
