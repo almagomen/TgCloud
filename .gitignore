@@ -1,0 +1,23 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+.env
+.env.*
+!.env.example
+
+# Tokens de Google y sesiones de Telegram
+tokens/
+*.session
+*.session-journal
+
+# Logs y descargas temporales
+*.log
+downloads/
+/tmp/
