@@ -2,13 +2,12 @@ import os
 import json
 from google_auth_oauthlib.flow import InstalledAppFlow
 
-# Permitir http:// solo para pruebas locales en localhost
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
 SCOPES = ['https://www.googleapis.com/auth/drive']
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CREDS_FILE = os.path.join(PROJECT_ROOT, 'tokens', 'credentials.json')
-TOKEN_FILE = os.path.join(PROJECT_ROOT, 'tokens', 'google_token.json')
+CREDS_FILE = os.path.join(PROJECT_ROOT, 'auth', 'credentials.json')
+TOKEN_FILE = os.path.join(PROJECT_ROOT, 'auth', 'google_token.json')
 
 def authenticate():
     if not os.path.exists(CREDS_FILE):
@@ -26,10 +25,10 @@ def authenticate():
     print("\n" + "="*70)
     print("🔐 AUTORIZACIÓN DE GOOGLE DRIVE")
     print("="*70)
-    print("\n1. Abre este enlace en el navegador de tu computadora:\n")
+    print("\n1. Abre este enlace en tu navegador:\n")
     print(auth_url)
     print("\n" + "="*70)
-    print("2. Inicia sesión con tu cuenta y acepta los permisos.")
+    print("2. Inicia sesión, acepta los permisos.")
     print("   El navegador intentará cargar http://localhost:8080/ (mostrará error de conexión).")
     print("   Copia la URL COMPLETA de la barra de direcciones del navegador")
     print("   (ejemplo: http://localhost:8080/?state=...&code=4/0A...)")
@@ -53,7 +52,7 @@ def authenticate():
     with open(TOKEN_FILE, 'w') as f:
         json.dump(token_data, f, indent=2)
 
-    print(f"\n✅ ¡Éxito! Token guardado correctamente en:\n   {TOKEN_FILE}\n")
+    print(f"\n✅ ¡Éxito! Token guardado en:\n   {TOKEN_FILE}\n")
 
 if __name__ == '__main__':
     authenticate()
