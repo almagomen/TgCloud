@@ -20,13 +20,13 @@ Bot interactivo de Telegram desarrollado en Python 3.12 para la descarga y almac
 
 ```text
 tgcloud/
-├── auth/                   # Todo lo relacionado a autenticación (IGNORADO en Git)
+├── auth/                   # Todo lo relacionado a autenticación 
 │   ├── auth_drive.py       # Script interactivo para autorizar Google Drive API
 │   ├── credentials.json    # Descargado de Google Cloud Console
 │   ├── google_token.json   # Token generado por auth_drive.py
 │   └── bot_session.session # Archivo de sesión de Telethon
-├── downloads/              # Carpeta de almacenamiento local (IGNORADO en Git)
-├── logs/                   # Logs de ejecución con rotación semanal .gz (IGNORADO en Git)
+├── downloads/              # Carpeta de almacenamiento local
+├── logs/                   # Logs de ejecución con rotación semanal .gz
 ├── src/
 │   └── tgcloud/
 │       ├── __init__.py
@@ -65,7 +65,6 @@ sudo apt update && sudo apt install -y python3-dev build-essential curl
 
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
-source $HOME/.local/bin/env
 
 # Instala exactamente las versiones fijadas en uv.lock
 uv sync
@@ -123,18 +122,18 @@ sudo nano /etc/systemd/system/tgcloud.service
 
 ```ini
 [Unit]
-Description=Telegram to Cloud Bot (UV Modern)
+Description=Telegram to Cloud Bot 
 After=network.target
 
 [Service]
 Type=simple
 User=ubuntu
-WorkingDirectory=/home/ubuntu/projects/tgcloud
+WorkingDirectory=/home/ubuntu/projects/TgCloud
 ExecStart=/home/ubuntu/.local/bin/uv run python src/tgcloud/bot.py
 
 Environment=PYTHONUNBUFFERED=1
 Environment=PYTHONOPTIMIZE=2
-EnvironmentFile=/home/ubuntu/projects/tgcloud/.env
+EnvironmentFile=/home/ubuntu/projects/TgCloud/.env
 
 Restart=always
 RestartSec=5s
