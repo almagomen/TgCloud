@@ -12,11 +12,16 @@ wheels/
 .env.*
 !.env.example
 
-# Tokens de Google y sesiones de Telegram
+# Tokens
+*.session
+*.session-journal
+credentials*.json
+*token*.json
 auth/*
 !auth/*.py
 
-# Logs y descargas temporales
+# Logs
 logs/
+*.log
 downloads/
 /tmp/
