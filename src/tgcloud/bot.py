@@ -17,7 +17,7 @@ from googleapiclient.http import MediaFileUpload
 from FastTelethonhelper import fast_download
 from dotenv import load_dotenv
 
-# ==================== LOGS ROTATIVOS SEMANALES (.GZ) ====================
+# ==================== LOGS ROTATIVOS SEMANALES EN ARCHIVO EXCLUSIVO ====================
 LOG_DIR = os.getenv("LOG_DIR", "logs")
 os.makedirs(LOG_DIR, exist_ok=True)
 LOG_FILE = os.path.join(LOG_DIR, "tgcloud.log")
@@ -33,7 +33,6 @@ def gzip_namer(name):
     """Añade la extensión .gz al nombre del archivo rotado."""
     return name + ".gz"
 
-# Rota todos los lunes a medianoche (W0), guarda 4 semanas de historial (backupCount=4)
 log_handler = TimedRotatingFileHandler(
     LOG_FILE,
     when="W0",
@@ -44,14 +43,14 @@ log_handler = TimedRotatingFileHandler(
 log_handler.rotator = gzip_rotator
 log_handler.namer = gzip_namer
 
+# Configuración de logs enfocada EXCLUSIVAMENTE en el archivo (sin StreamHandler a consola)
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S',
-    handlers=[log_handler, logging.StreamHandler()]
+    handlers=[log_handler]
 )
 
-# Silenciar logs ruidosos
 logging.getLogger('telethon').setLevel(logging.WARNING)
 logging.getLogger('googleapiclient').setLevel(logging.WARNING)
 
@@ -88,7 +87,6 @@ drive_folder_cache = {}
 _drive_service_lock = asyncio.Lock()
 
 async def get_drive_service():
-    """Instancia y retorna el servicio de Google Drive de manera segura y reutilizable."""
     global drive_service
     if drive_service:
         return drive_service
@@ -130,9 +128,13 @@ class HighSpeedProgressTracker:
         elapsed = time.time() - self.start_time
         if elapsed <= 0: elapsed = 0.1
 
-        speed_bps = current / elapsed
-        speed_kbps = speed_bps / 1024
-        speed_fmt = f"{speed_kbps / 1024:.2f} MB/s" if speed_kbps >= 1024 else f"{speed_kbps:.2f} KB/s"
+        speed_mbps = (current * 8) / (1024 * 1024 * elapsed)
+        if speed_mbps >= 1:
+            speed_fmt = f"{speed_mbps:.2f} Mbps"
+        else:
+            speed_kbps = (current * 8) / (1024 * elapsed)
+            speed_fmt = f"{speed_kbps:.2f} Kbps"
+
         percent = (current / total_bytes) * 100 if total_bytes else 0
 
         completed_blocks = int(percent // 10)
@@ -157,7 +159,6 @@ def clasificar_archivo(mime: str) -> Tuple[str, str]:
 
 
 async def obtener_nombre_unico(directorio: str, nombre_archivo: str, check_local: bool, check_drive: bool, service=None, folder_id=None) -> str:
-    """Busca un nombre libre verificando existencia local, en Drive o en ambas de forma asíncrona."""
     nombre, ext = os.path.splitext(nombre_archivo)
     contador = 1
     nuevo_nombre = nombre_archivo
@@ -179,7 +180,6 @@ async def obtener_nombre_unico(directorio: str, nombre_archivo: str, check_local
 
 
 async def run_sync(func, *args, **kwargs):
-    """Ejecuta una función síncrona/bloqueante en un executor sin detener el loop principal."""
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(None, lambda: func(*args, **kwargs))
 
@@ -222,7 +222,6 @@ async def buscar_archivo_drive(service, folder_id: str, name: str) -> str:
 
 
 async def subir_drive_con_progreso(service, path: str, filename: str, mime: str, folder_id: str, status_msg, icono: str) -> str:
-    """Sube un archivo a Google Drive en fragmentos de 5MB y actualiza el progreso en Telegram."""
     file_metadata = {"name": filename, "parents": [folder_id]}
     media = MediaFileUpload(path, mimetype=mime, resumable=True, chunksize=5*1024*1024)
     request = service.files().create(body=file_metadata, media_body=media)
@@ -239,9 +238,13 @@ async def subir_drive_con_progreso(service, path: str, filename: str, mime: str,
             elapsed = time.time() - start_time
             if elapsed <= 0: elapsed = 0.1
 
-            speed_bps = current_bytes / elapsed
-            speed_kbps = speed_bps / 1024
-            speed_fmt = f"{speed_kbps / 1024:.2f} MB/s" if speed_kbps >= 1024 else f"{speed_kbps:.2f} KB/s"
+            speed_mbps = (current_bytes * 8) / (1024 * 1024 * elapsed)
+            if speed_mbps >= 1:
+                speed_fmt = f"{speed_mbps:.2f} Mbps"
+            else:
+                speed_kbps = (current_bytes * 8) / (1024 * elapsed)
+                speed_fmt = f"{speed_kbps:.2f} Kbps"
+
             percent = (current_bytes / total_size) * 100
 
             completed_blocks = int(percent // 10)
@@ -261,7 +264,7 @@ async def subir_drive_con_progreso(service, path: str, filename: str, mime: str,
                     await status_msg.edit(text, buttons=None)
                     last_edit_time = now
                 except Exception as e:
-                    logging.warning(f"Error actualizando progreso de subida: {e}")
+                    logging.warning(f"Error actualizando progreso: {e}")
 
     return response.get("id")
 
@@ -296,7 +299,7 @@ async def handler(event):
 
     buttons_menu = [
         [Button.inline('SERVER', b'SERVER'), Button.inline('GDRIVE', b'GDRIVE')],
-        [Button.inline('AMBOS', b'AMBOS'), Button.inline('STOP', b'STOP')]
+        [Button.inline('AMBOS', b'AMBOS'), Button.inline('CANCELAR', b'CANCELAR')]
     ]
 
     status_msg = await event.respond(resumen_text, buttons=buttons_menu)
@@ -306,7 +309,7 @@ async def handler(event):
     async def temp_callback(e):
         if e.message_id == status_msg.id and e.sender_id == event.sender_id:
             data = e.data.decode('utf-8')
-            if data in ['SERVER', 'GDRIVE', 'AMBOS', 'STOP']:
+            if data in ['SERVER', 'GDRIVE', 'AMBOS', 'CANCELAR']:
                 if not future_decision.done():
                     await e.answer()
                     future_decision.set_result(data)
@@ -321,7 +324,7 @@ async def handler(event):
     finally:
         client.remove_event_handler(temp_callback, events.CallbackQuery)
 
-    if decision == "STOP":
+    if decision == "CANCELAR":
         await status_msg.edit("❌ **Proceso cancelado por el usuario.**", buttons=None)
         return
 
@@ -354,7 +357,7 @@ async def handler(event):
                     f"⚠️ **Archivo existente: {' | '.join(lugares)}.**\n{icono} `{file_name}`\n\n¿Qué deseas hacer?",
                     buttons=[
                         [Button.inline('REEMPLAZAR', b'REEMPLAZAR'), Button.inline('DUPLICAR', b'DUPLICAR')],
-                        [Button.inline('STOP', b'CANCELAR')]
+                        [Button.inline('CANCELAR', b'CANCELAR')]
                     ]
                 )
 
@@ -399,7 +402,6 @@ async def handler(event):
             tmp_dir = tempfile.mkdtemp()
             tmp_dir_slash = os.path.join(tmp_dir, "")
 
-            # --- PARCHES DE TEXTO EN DESCARGA ---
             original_client_edit = client.edit_message
             original_msg_edit = status_msg.edit
 
