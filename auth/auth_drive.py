@@ -1,3 +1,16 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.12"
+# dependencies = [
+#   "google-auth-oauthlib>=1.4.1",
+# ]
+# ///
+"""Script interactivo de autorización para la API de Google Drive.
+
+Uso:
+    uv run auth/auth_drive.py
+"""
+
 import os
 import json
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -23,18 +36,15 @@ def authenticate():
     auth_url, _ = flow.authorization_url(prompt='consent', access_type='offline')
 
     print("\n" + "="*70)
-    print("🔐 AUTORIZACIÓN DE GOOGLE DRIVE")
+    print("🔐 AUTORIZACIÓN DE GOOGLE DRIVE (PEP 723)")
     print("="*70)
     print("\n1. Abre este enlace en tu navegador:\n")
     print(auth_url)
     print("\n" + "="*70)
-    print("2. Inicia sesión, acepta los permisos.")
-    print("   El navegador intentará cargar http://localhost:8080/ (mostrará error de conexión).")
-    print("   Copia la URL COMPLETA de la barra de direcciones del navegador")
-    print("   (ejemplo: http://localhost:8080/?state=...&code=4/0A...)")
+    print("2. Copia la URL resultante completa de localhost:8080:")
     print("="*70 + "\n")
 
-    redirect_response = input("Pega aquí la URL completa resultante: ").strip()
+    redirect_response = input("Pega aquí la URL completa: ").strip()
 
     flow.fetch_token(authorization_response=redirect_response)
     creds = flow.credentials

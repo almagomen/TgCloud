@@ -1,0 +1,33 @@
+name: CI Verification
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  verify:
+    name: Verify UV Lockfile & Python Syntax
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install UV
+        uses: astral-sh/setup-uv@v5
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Check uv.lock consistency
+        run: uv lock --check
+
+      - name: Verify dependencies sync (--frozen)
+        run: uv sync --frozen
+
+      - name: Verify Python syntax
+        run: uv run python -m compileall src/ auth/
