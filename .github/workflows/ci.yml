@@ -1,14 +1,12 @@
-name: CI Verification
+name: CI/CD Pipeline
 
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
 
 jobs:
   verify:
-    name: Verify UV Lockfile & Python Syntax
+    name: 1. Verify UV Lockfile & Python Syntax
     runs-on: ubuntu-latest
 
     steps:
@@ -31,3 +29,21 @@ jobs:
 
       - name: Verify Python syntax
         run: uv run python -m compileall src/ auth/
+
+  deploy:
+    name: 2. Auto Deploy to Oracle VPS
+    needs: verify
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            cd ~/projects/TgCloud
+            git pull origin main
+            ~/.local/bin/uv sync --frozen
+            sudo systemctl restart tgcloud.service
