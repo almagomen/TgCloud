@@ -23,14 +23,12 @@ os.makedirs(LOG_DIR, exist_ok=True)
 LOG_FILE = os.path.join(LOG_DIR, "tgcloud.log")
 
 def gzip_rotator(source, dest):
-    """Comprime el archivo rotado en formato .gz y elimina el original sin comprimir."""
     with open(source, 'rb') as f_in:
         with gzip.open(dest, 'wb') as f_out:
             shutil.copyfileobj(f_in, f_out)
     os.remove(source)
 
 def gzip_namer(name):
-    """Añade la extensión .gz al nombre del archivo rotado."""
     return name + ".gz"
 
 log_handler = TimedRotatingFileHandler(
@@ -43,7 +41,6 @@ log_handler = TimedRotatingFileHandler(
 log_handler.rotator = gzip_rotator
 log_handler.namer = gzip_namer
 
-# Configuración de logs enfocada EXCLUSIVAMENTE en el archivo (sin StreamHandler a consola)
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -129,11 +126,7 @@ class HighSpeedProgressTracker:
         if elapsed <= 0: elapsed = 0.1
 
         speed_mbps = (current * 8) / (1024 * 1024 * elapsed)
-        if speed_mbps >= 1:
-            speed_fmt = f"{speed_mbps:.2f} Mbps"
-        else:
-            speed_kbps = (current * 8) / (1024 * elapsed)
-            speed_fmt = f"{speed_kbps:.2f} Kbps"
+        speed_fmt = f"{speed_mbps:.2f} Mbps" if speed_mbps >= 1 else f"{(current * 8) / (1024 * elapsed):.2f} Kbps"
 
         percent = (current / total_bytes) * 100 if total_bytes else 0
 
@@ -239,11 +232,7 @@ async def subir_drive_con_progreso(service, path: str, filename: str, mime: str,
             if elapsed <= 0: elapsed = 0.1
 
             speed_mbps = (current_bytes * 8) / (1024 * 1024 * elapsed)
-            if speed_mbps >= 1:
-                speed_fmt = f"{speed_mbps:.2f} Mbps"
-            else:
-                speed_kbps = (current_bytes * 8) / (1024 * elapsed)
-                speed_fmt = f"{speed_kbps:.2f} Kbps"
+            speed_fmt = f"{speed_mbps:.2f} Mbps" if speed_mbps >= 1 else f"{(current_bytes * 8) / (1024 * elapsed):.2f} Kbps"
 
             percent = (current_bytes / total_size) * 100
 
@@ -277,10 +266,14 @@ async def handler(event):
         return
 
     msg = event.message
-    file_name = event.file.name or f"archivo_{msg.id}{event.file.ext or ''}"
+    
+    # 🔒 FIX DE SEGURIDAD (CWE-22 Path Traversal): Sanitizar el nombre del archivo
+    raw_name = event.file.name or f"archivo_{msg.id}{event.file.ext or ''}"
+    file_name = os.path.basename(raw_name).replace('\0', '')
+    
     file_size = event.file.size or 0
 
-    if file_size == 0:
+    if file_size == 0 or not file_name:
         return
 
     mime_type, _ = mimetypes.guess_type(file_name)
@@ -299,7 +292,7 @@ async def handler(event):
 
     buttons_menu = [
         [Button.inline('SERVER', b'SERVER'), Button.inline('GDRIVE', b'GDRIVE')],
-        [Button.inline('AMBOS', b'AMBOS'), Button.inline('CANCELAR', b'CANCELAR')]
+        [Button.inline('AMBOS', b'AMBOS'), Button.inline('STOP', b'STOP')]
     ]
 
     status_msg = await event.respond(resumen_text, buttons=buttons_menu)
@@ -309,7 +302,7 @@ async def handler(event):
     async def temp_callback(e):
         if e.message_id == status_msg.id and e.sender_id == event.sender_id:
             data = e.data.decode('utf-8')
-            if data in ['SERVER', 'GDRIVE', 'AMBOS', 'CANCELAR']:
+            if data in ['SERVER', 'GDRIVE', 'AMBOS', 'STOP']:
                 if not future_decision.done():
                     await e.answer()
                     future_decision.set_result(data)
@@ -324,7 +317,7 @@ async def handler(event):
     finally:
         client.remove_event_handler(temp_callback, events.CallbackQuery)
 
-    if decision == "CANCELAR":
+    if decision == "STOP":
         await status_msg.edit("❌ **Proceso cancelado por el usuario.**", buttons=None)
         return
 
@@ -357,7 +350,7 @@ async def handler(event):
                     f"⚠️ **Archivo existente: {' | '.join(lugares)}.**\n{icono} `{file_name}`\n\n¿Qué deseas hacer?",
                     buttons=[
                         [Button.inline('REEMPLAZAR', b'REEMPLAZAR'), Button.inline('DUPLICAR', b'DUPLICAR')],
-                        [Button.inline('CANCELAR', b'CANCELAR')]
+                        [Button.inline('STOP', b'CANCELAR')]
                     ]
                 )
 
@@ -469,7 +462,7 @@ async def handler(event):
 
                     dest_text = f"Google Drive / {subcarpeta}" if decision == "GDRIVE" else f"Servidor | Google Drive / {subcarpeta}"
                     await status_msg.edit(
-                        f"✅ **¡Proceso Completado con Éxito!**\n{icono} `{final_file_name}`\n\n"
+                        f"✅ **¡Proceso Completado with Éxito!**\n{icono} `{final_file_name}`\n\n"
                         f"📍 **Destino:** `{dest_text}`\n🔗 [Link Drive](https://drive.google.com/file/d/{file_drive_id}/view)",
                         buttons=None
                     )
